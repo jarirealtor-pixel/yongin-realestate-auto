@@ -1,0 +1,48 @@
+name: 용인 주간 시세 리포트 자동생성
+
+on:
+  schedule:
+    - cron: "0 23 * * 0"
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "테스트 실행 (노션 저장 안 함)"
+        required: false
+        default: "false"
+        type: boolean
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: pip install --upgrade pip
+
+      - name: 주간 시세 리포트 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DRAFT_PAGE_ID: ${{ secrets.NOTION_DRAFT_PAGE_ID }}
+          MOLIT_API_KEY: ${{ secrets.MOLIT_API_KEY }}
+        run: |
+          cd scripts
+          python weekly_report.py
+
+      - name: 생성된 리포트 업로드
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: weekly-report-${{ github.run_number }}
+          path: scripts/report_output.json
+          retention-days: 90
