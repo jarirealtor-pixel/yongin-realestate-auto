@@ -1,0 +1,56 @@
+name: 신규 매물 자동 포스팅 생성
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+    - cron: "0 4 * * *"
+    - cron: "0 9 * * *"
+
+  workflow_dispatch:
+    inputs:
+      post_type:
+        description: "포스팅 채널"
+        required: false
+        default: "blog"
+        type: choice
+        options: ["blog", "cafe"]
+      tone:
+        description: "글 어조"
+        required: false
+        default: "pro"
+        type: choice
+        options: ["pro", "fri", "inv"]
+
+jobs:
+  auto-post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 신규 매물 포스팅 자동 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DB_ID: ${{ secrets.NOTION_DB_ID }}
+          NOTION_DRAFT_PAGE_ID: ${{ secrets.NOTION_DRAFT_PAGE_ID }}
+          POST_TYPE: ${{ inputs.post_type || 'blog' }}
+          TONE: ${{ inputs.tone || 'pro' }}
+        run: |
+          cd scripts
+          python auto_post_new.py
+
+      - name: 실행 결과 업로드
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-post-${{ github.run_number }}
+          path: scripts/auto_post_output.json
+          retention-days: 30
